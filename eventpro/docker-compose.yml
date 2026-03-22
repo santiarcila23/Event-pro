@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+
+  # ── Base de datos MySQL ────────────────────────────────────────
+  db:
+    image: mysql:8.4
+    container_name: eventpro_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: eventpro123
+      MYSQL_DATABASE:      eventpro
+    ports:
+      - "3306:3306"
+    volumes:
+      - eventpro_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-peventpro123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Aplicación Python/Tkinter ──────────────────────────────────
+  app:
+    build: .
+    container_name: eventpro_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./exports:/app/exports
+      - ./assets:/app/assets
+    network_mode: host   # necesario para que Tkinter acceda al display
+
+volumes:
+  eventpro_data:
